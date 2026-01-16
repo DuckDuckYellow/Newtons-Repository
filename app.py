@@ -21,38 +21,38 @@ app = Flask(__name__)
 
 ARTICLES = [
     {
-        "id": "the-journey-begins",
-        "title": "The Journey Begins: Taking Over Wrexham AFC",
+        "id": "part 1",
+        "title": "How did we fall so far?",
         "date": "2024-01-15",
         "filename": "article1.txt"
     },
     {
-        "id": "first-season-review",
-        "title": "First Season Review: Promotion Push",
+        "id": "part 2",
+        "title": "The struggle is real, or is it?",
         "date": "2024-02-20",
         "filename": "article2.txt"
     },
     {
-        "id": "transfer-window-madness",
-        "title": "Transfer Window Madness: Building the Squad",
+        "id": "part 3",
+        "title": "Crossing the line",
         "date": "2024-03-10",
         "filename": "article3.txt"
     },
     {
-        "id": "derby-day-drama",
-        "title": "Derby Day Drama: The Welsh Rivalry",
+        "id": "part 4",
+        "title": "Out with the old and in with the older",
         "date": "2024-04-05",
         "filename": "article4.txt"
     },
     {
-        "id": "youth-academy-gems",
-        "title": "Youth Academy Gems: Stars of Tomorrow",
+        "id": "part 5",
+        "title": "The Crucible",
         "date": "2024-05-12",
         "filename": "article5.txt"
     },
     {
-        "id": "championship-glory",
-        "title": "Championship Glory: The Title Decider",
+        "id": "part 6",
+        "title": "Disaster and Triumph",
         "date": "2024-06-01",
         "filename": "article6.txt"
     },
