@@ -98,6 +98,7 @@
                                     </p>
 
                                     <form method="POST" enctype="multipart/form-data" id="excelUploadForm">
+                                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                         <div class="mb-4">
                                             <label for="excelFile" class="form-label fw-semibold">Choose Excel File (.xlsx or .xls)</label>
                                             <input type="file" class="form-control" id="excelFile" name="excel_file" accept=".xlsx,.xls" required>
@@ -137,6 +138,7 @@
                             </p>
 
                             <form method="POST" id="manualInputForm">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                                 <div id="vacancyInputs">
                                     <!-- Initial vacancy input row -->
                                     <div class="vacancy-row mb-4 pb-4 border-bottom" data-index="0">
