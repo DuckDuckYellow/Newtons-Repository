@@ -3,10 +3,64 @@ Newton's Repository - A collection of projects, stories, and experiments
 """
 from flask import Flask, render_template, abort, url_for, redirect, request
 from datetime import datetime
+from pathlib import Path
 import os
 import re
+import secrets
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Config:
+    """Security configuration for Flask application."""
+    SECRET_KEY = os.environ.get('SECRET_KEY')
+    if not SECRET_KEY:
+        if os.environ.get('FLASK_ENV') == 'production':
+            raise ValueError("SECRET_KEY must be set in production!")
+        else:
+            SECRET_KEY = secrets.token_hex(32)
+            print("⚠️  WARNING: Using auto-generated SECRET_KEY for development")
+
+    DEBUG = os.environ.get('FLASK_DEBUG', 'False').lower() in ('true', '1')
+    MAX_CONTENT_LENGTH = 10 * 1024 * 1024  # 10MB max file size
+    UPLOAD_EXTENSIONS = {'.xlsx', '.xls'}
+    SESSION_COOKIE_SECURE = False  # Set True when using HTTPS
+    SESSION_COOKIE_HTTPONLY = True
+    SESSION_COOKIE_SAMESITE = 'Lax'
 
 app = Flask(__name__)
+app.config.from_object(Config)
+
+@app.after_request
+def set_security_headers(response):
+    """Apply security headers to all responses."""
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    response.headers['X-Frame-Options'] = 'SAMEORIGIN'
+    response.headers['X-XSS-Protection'] = '1; mode=block'
+
+    if request.is_secure:
+        response.headers['Strict-Transport-Security'] = 'max-age=31536000; includeSubDomains'
+
+    response.headers['Content-Security-Policy'] = (
+        "default-src 'self'; "
+        "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+        "img-src 'self' data: https:; "
+        "font-src 'self' https://cdn.jsdelivr.net; "
+        "connect-src 'self'; "
+        "frame-ancestors 'self'; "
+        "base-uri 'self'; "
+        "form-action 'self'"
+    )
+
+    response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
+    response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
+
+    return response
+
+# Initialize CSRF Protection
+from flask_wtf.csrf import CSRFProtect
+csrf = CSRFProtect(app)
 
 BLOG_CATEGORIES = {
     "morecambe-fm26": {
@@ -33,11 +87,27 @@ PROJECTS = [
 ]
 
 def get_article_content(filename):
-    filepath = os.path.join(app.root_path, "articles", filename)
+    """Safely read article content with path validation."""
+    # Validate filename - only allow alphanumeric, dash, underscore, and dot
+    if not filename or not re.match(r'^[\w\-\.]+$', filename):
+        return None
+
+    # Build safe path using pathlib
+    articles_dir = Path(app.root_path) / "articles"
+    filepath = (articles_dir / filename).resolve()
+
+    # Ensure the resolved path is still within articles directory (prevents traversal)
+    try:
+        filepath.relative_to(articles_dir)
+    except ValueError:
+        # Path is outside articles directory
+        return None
+
+    # Read file with error handling
     try:
         with open(filepath, "r", encoding="utf-8") as f:
             return f.read()
-    except FileNotFoundError:
+    except (FileNotFoundError, PermissionError):
         return None
 
 def format_date(date_string):
@@ -124,6 +194,45 @@ BASE_CAPACITY = {
     'medium': 1/20,    # 5% per vacancy
     'hard': 1/12       # 8.33% per vacancy
 }
+
+def validate_uploaded_file(file):
+    """Comprehensive file upload validation."""
+    if not file or not file.filename:
+        return False, "No file selected"
+
+    filename = file.filename.lower().strip()
+
+    # Check for path traversal attempts
+    if '/' in filename or '\\' in filename or '..' in filename:
+        return False, "Invalid filename"
+
+    # Check file extension
+    if not any(filename.endswith(ext) for ext in app.config['UPLOAD_EXTENSIONS']):
+        return False, "Invalid file type. Only .xlsx and .xls allowed"
+
+    # Check file size
+    file.seek(0, 2)  # Seek to end
+    file_size = file.tell()
+    file.seek(0)  # Reset to beginning
+
+    if file_size > app.config['MAX_CONTENT_LENGTH']:
+        return False, "File too large. Maximum 10MB"
+
+    if file_size == 0:
+        return False, "File is empty"
+
+    # Validate file magic bytes
+    header = file.read(8)
+    file.seek(0)
+
+    # Check for valid Excel file signatures
+    is_xlsx = header[:2] == b'PK'  # ZIP format (xlsx)
+    is_xls = header[:8] == b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1'  # OLE format (xls)
+
+    if not (is_xlsx or is_xls):
+        return False, "File is not a valid Excel file"
+
+    return True, None
 
 def calculate_vacancy_capacity(role_type, is_internal=False, stage=''):
     """
@@ -543,34 +652,27 @@ def capacity_tracker():
             input_method = 'excel'
             file = request.files['excel_file']
 
-            # Validate file extension
-            if not file.filename.endswith(('.xlsx', '.xls')):
-                errors.append("Invalid file format. Please upload .xlsx or .xls file.")
+            # Validate file using comprehensive validation
+            is_valid, error_msg = validate_uploaded_file(file)
+            if not is_valid:
+                errors.append(error_msg)
             else:
-                # Check file size (10MB limit)
-                file.seek(0, 2)  # Seek to end
-                file_size = file.tell()
-                file.seek(0)  # Reset to beginning
+                # Process Excel file
+                recruiters_dict, excel_errors = process_excel_upload(file)
+                errors.extend(excel_errors)
 
-                if file_size > 10 * 1024 * 1024:  # 10MB
-                    errors.append("File too large. Maximum file size is 10MB.")
-                else:
-                    # Process Excel file
-                    recruiters_dict, excel_errors = process_excel_upload(file)
-                    errors.extend(excel_errors)
-
-                    # Calculate capacity for each recruiter
-                    if not errors:
-                        for recruiter_name, vacancies in recruiters_dict.items():
-                            try:
-                                capacity_info = calculate_recruiter_capacity_from_vacancies(vacancies)
-                                recruiter = {
-                                    'name': recruiter_name,
-                                    **capacity_info
-                                }
-                                recruiters_data.append(recruiter)
-                            except Exception as e:
-                                errors.append(f"Error calculating capacity for {recruiter_name}: {str(e)}")
+                # Calculate capacity for each recruiter
+                if not errors:
+                    for recruiter_name, vacancies in recruiters_dict.items():
+                        try:
+                            capacity_info = calculate_recruiter_capacity_from_vacancies(vacancies)
+                            recruiter = {
+                                'name': recruiter_name,
+                                **capacity_info
+                            }
+                            recruiters_data.append(recruiter)
+                        except Exception as e:
+                            errors.append(f"Error calculating capacity for {recruiter_name}: {str(e)}")
 
         else:
             # Manual input processing - Enhanced with new fields
@@ -739,4 +841,13 @@ def page_not_found(e):
     return render_template("404.html"), 404
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    debug_mode = app.config.get('DEBUG', False)
+
+    if debug_mode:
+        print("=" * 60)
+        print("⚠️  WARNING: Running in DEBUG mode")
+        print("   This should ONLY be used in development!")
+        print("   Set FLASK_DEBUG=False for production")
+        print("=" * 60)
+
+    app.run(debug=debug_mode)
