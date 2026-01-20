@@ -15,8 +15,8 @@
     <!-- Breadcrumb -->
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Home</a></li>
-            <li class="breadcrumb-item"><a href="{{ url_for('blog_home') }}">Blog</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('blog.blog_home') }}">Blog</a></li>
             <li class="breadcrumb-item active" aria-current="page">{{ category.name }}, {{ category.subtitle }}</li>
         </ol>
     </nav>
@@ -45,7 +45,7 @@
                         <span class="part-badge part-badge-morecambe">Part {{ article.part }} of {{ total_parts }}</span>
                     </div>
                     <h3 class="h5 card-title mb-2">
-                        <a href="{{ url_for('article', category_id=category.id, article_id=article.id) }}"
+                        <a href="{{ url_for('blog.article', category_id=category.id, article_id=article.id) }}"
                            class="text-decoration-none text-dark">
                             {{ article.title }}
                         </a>
@@ -55,7 +55,7 @@
                         <span class="article-meta">
                             {{ format_date(article.date) }} &bull; {{ article.reading_time }} min read
                         </span>
-                        <a href="{{ url_for('article', category_id=category.id, article_id=article.id) }}"
+                        <a href="{{ url_for('blog.article', category_id=category.id, article_id=article.id) }}"
                            class="btn btn-outline-primary btn-sm">
                             Read Article &rarr;
                         </a>
@@ -68,7 +68,7 @@
 
     <!-- Back to Blog -->
     <div class="mt-5 pt-3 border-top">
-        <a href="{{ url_for('blog_home') }}" class="btn btn-outline-secondary">
+        <a href="{{ url_for('blog.blog_home') }}" class="btn btn-outline-secondary">
             &larr; Back to All Categories
         </a>
     </div>

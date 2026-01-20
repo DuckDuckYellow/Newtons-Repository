@@ -9,9 +9,9 @@
             <!-- Breadcrumb -->
             <nav aria-label="breadcrumb">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ url_for('home') }}">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('blog_home') }}">Blog</a></li>
-                    <li class="breadcrumb-item"><a href="{{ url_for('blog_category', category_id=category.id) }}">{{ category.name }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Home</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('blog.blog_home') }}">Blog</a></li>
+                    <li class="breadcrumb-item"><a href="{{ url_for('blog.blog_category', category_id=category.id) }}">{{ category.name }}</a></li>
                     <li class="breadcrumb-item active" aria-current="page">Part {{ article.part }}</li>
                 </ol>
             </nav>
@@ -32,7 +32,7 @@
             <!-- Top Navigation -->
             <nav class="article-nav border-bottom mb-4">
                 {% if prev_article %}
-                <a href="{{ url_for('article', category_id=category.id, article_id=prev_article.id) }}"
+                <a href="{{ url_for('blog.article', category_id=category.id, article_id=prev_article.id) }}"
                    class="btn btn-outline-secondary btn-sm">
                     &larr; Part {{ prev_article.part }}
                 </a>
@@ -40,13 +40,13 @@
                 <span></span>
                 {% endif %}
 
-                <a href="{{ url_for('blog_category', category_id=category.id) }}"
+                <a href="{{ url_for('blog.blog_category', category_id=category.id) }}"
                    class="btn btn-outline-primary btn-sm">
                     All Parts
                 </a>
 
                 {% if next_article %}
-                <a href="{{ url_for('article', category_id=category.id, article_id=next_article.id) }}"
+                <a href="{{ url_for('blog.article', category_id=category.id, article_id=next_article.id) }}"
                    class="btn btn-outline-secondary btn-sm">
                     Part {{ next_article.part }} &rarr;
                 </a>
@@ -69,7 +69,7 @@
             <!-- Bottom Navigation -->
             <nav class="article-nav border-top mt-4 pt-4">
                 {% if prev_article %}
-                <a href="{{ url_for('article', category_id=category.id, article_id=prev_article.id) }}"
+                <a href="{{ url_for('blog.article', category_id=category.id, article_id=prev_article.id) }}"
                    class="btn btn-outline-secondary">
                     <small class="d-block text-muted">Previous</small>
                     &larr; Part {{ prev_article.part }}
@@ -78,13 +78,13 @@
                 <div class="nav-spacer"></div>
                 {% endif %}
 
-                <a href="{{ url_for('blog_category', category_id=category.id) }}"
+                <a href="{{ url_for('blog.blog_category', category_id=category.id) }}"
                    class="btn btn-primary">
                     Back to {{ category.name }}
                 </a>
 
                 {% if next_article %}
-                <a href="{{ url_for('article', category_id=category.id, article_id=next_article.id) }}"
+                <a href="{{ url_for('blog.article', category_id=category.id, article_id=next_article.id) }}"
                    class="btn btn-outline-secondary">
                     <small class="d-block text-muted">Next</small>
                     Part {{ next_article.part }} &rarr;
