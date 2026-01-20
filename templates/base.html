@@ -352,36 +352,36 @@
     <!-- Navigation -->
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="{{ url_for('home') }}">Newton's Repository</a>
+            <a class="navbar-brand" href="{{ url_for('main.home') }}">Newton's Repository</a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto">
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'home' %}active{% endif %}" href="{{ url_for('home') }}">Home</a>
+                        <a class="nav-link {% if request.endpoint == 'main.home' %}active{% endif %}" href="{{ url_for('main.home') }}">Home</a>
                     </li>
 
                     <!-- Blog Dropdown -->
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle {% if request.endpoint in ['blog_home', 'blog_category', 'article'] %}active{% endif %}"
+                        <a class="nav-link dropdown-toggle {% if request.endpoint in ['blog.blog_home', 'blog.blog_category', 'blog.article'] %}active{% endif %}"
                            href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
                             Blog
                         </a>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="{{ url_for('blog_home') }}">All Categories</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('blog.blog_home') }}">All Categories</a></li>
                             <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="{{ url_for('blog_category', category_id='morecambe-fm26') }}">Morecambe FC, FM26</a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('blog.blog_category', category_id='morecambe-fm26') }}">Morecambe FC, FM26</a></li>
                             <!-- Add more categories here as they're created -->
                         </ul>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'projects' %}active{% endif %}" href="{{ url_for('projects') }}">Projects</a>
+                        <a class="nav-link {% if request.endpoint == 'projects.projects_home' %}active{% endif %}" href="{{ url_for('projects.projects_home') }}">Projects</a>
                     </li>
 
                     <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint == 'about' %}active{% endif %}" href="{{ url_for('about') }}">About</a>
+                        <a class="nav-link {% if request.endpoint == 'main.about' %}active{% endif %}" href="{{ url_for('main.about') }}">About</a>
                     </li>
                 </ul>
             </div>
