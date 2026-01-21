@@ -263,7 +263,7 @@ class PlayerAnalysis:
         Get Bootstrap color class for value score.
 
         Returns:
-            Bootstrap color class (success, info, warning, danger)
+            Bootstrap color class (success, info, warning, secondary, danger)
         """
         if self.value_score >= 150:
             return "success"  # Green
@@ -272,7 +272,7 @@ class PlayerAnalysis:
         elif self.value_score >= 100:
             return "warning"  # Yellow
         elif self.value_score >= 80:
-            return "orange"  # Orange
+            return "secondary"  # Gray (replaces invalid "orange")
         else:
             return "danger"  # Red
 
