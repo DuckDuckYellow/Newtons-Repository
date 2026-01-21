@@ -259,16 +259,13 @@ def squad_audit_tracker():
                     service = SquadAuditService()
                     analysis_result = service.analyze_squad(squad)
 
-                    # Store result in session for CSV export and position recalculation
-                    session['squad_analysis_csv'] = service.export_to_csv_data(analysis_result)
-
-                    # Store HTML content in session for position recalculation
-                    # (more efficient than pickling the entire squad object)
+                    # Store HTML content in a temporary file for position recalculation and CSV re-generation
                     import tempfile
                     import os
 
-                    # Create a temporary file to store the HTML
                     temp_dir = tempfile.gettempdir()
+
+                    # Create a temporary file to store the HTML
                     temp_file = tempfile.NamedTemporaryFile(
                         mode='w',
                         suffix='.html',
@@ -280,8 +277,12 @@ def squad_audit_tracker():
                     temp_file_path = temp_file.name
                     temp_file.close()
 
+                    # Store only the file path in session (avoids exceeding cookie size limits)
                     session['squad_html_path'] = temp_file_path
+                    session.modified = True  # Explicitly mark session as modified
                     current_app.logger.info(f"Squad audit: Stored HTML in {temp_file_path}")
+                    current_app.logger.info(f"Squad audit: Session size check - squad_html_path length: {len(temp_file_path)} chars")
+                    current_app.logger.info(f"Squad audit: Session keys after storage: {list(session.keys())}")
 
                     current_app.logger.info("Squad audit: Analysis complete")
 
@@ -318,31 +319,59 @@ def export_squad_audit():
     """
     Export squad audit analysis results to CSV.
     """
+    from services.fm_parser import FMHTMLParser
+    from services.squad_audit_service import SquadAuditService
+    import os
+
     current_app.logger.info("Squad audit CSV export requested")
 
-    # Get CSV data from session
-    csv_data = session.get('squad_analysis_csv', [])
-
-    if not csv_data:
-        current_app.logger.warning("Squad audit export: No data in session")
+    # Check if we have the HTML file path in session
+    if 'squad_html_path' not in session:
+        current_app.logger.warning("Squad audit export: No session data found")
         return "No analysis data available. Please analyze a squad first.", 400
 
-    # Create CSV in memory
-    output = StringIO()
-    if csv_data:
+    html_file_path = session['squad_html_path']
+
+    # Check if the temporary file still exists
+    if not os.path.exists(html_file_path):
+        current_app.logger.error(f"Squad audit export: HTML file not found at {html_file_path}")
+        return "Session expired. Please analyze your squad again.", 400
+
+    try:
+        # Read and re-parse the HTML to regenerate analysis
+        with open(html_file_path, 'r', encoding='utf-8') as f:
+            html_content = f.read()
+
+        parser = FMHTMLParser()
+        squad = parser.parse_html(html_content)
+
+        service = SquadAuditService()
+        analysis_result = service.analyze_squad(squad)
+
+        # Generate CSV data
+        csv_data = service.export_to_csv_data(analysis_result)
+
+        if not csv_data:
+            return "No data to export.", 400
+
+        # Create CSV in memory
+        output = StringIO()
         fieldnames = csv_data[0].keys()
         writer = csv.DictWriter(output, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(csv_data)
 
-    # Create response
-    response = make_response(output.getvalue())
-    response.headers["Content-Disposition"] = "attachment; filename=squad_audit_analysis.csv"
-    response.headers["Content-Type"] = "text/csv"
+        # Create response
+        response = make_response(output.getvalue())
+        response.headers["Content-Disposition"] = "attachment; filename=squad_audit_analysis.csv"
+        response.headers["Content-Type"] = "text/csv"
 
-    current_app.logger.info("Squad audit: CSV export complete")
+        current_app.logger.info("Squad audit: CSV export complete")
+        return response
 
-    return response
+    except Exception as e:
+        current_app.logger.error(f"Squad audit export error: {e}")
+        return f"Error generating CSV: {str(e)}", 500
 
 
 @projects_bp.route("/squad-audit-tracker/recalculate", methods=["POST"])
@@ -359,17 +388,19 @@ def recalculate_player_position():
 
     try:
         current_app.logger.info("Position recalculation requested")
+        current_app.logger.info(f"Session keys available: {list(session.keys())}")
 
         data = request.get_json()
         player_name = data.get('player_name')
         new_position = data.get('new_position')
+        current_app.logger.info(f"Recalculation for player: {player_name}, new position: {new_position}")
 
         if not player_name or not new_position:
             return {"error": "Missing player_name or new_position", "success": False}, 400
 
         # Get stored HTML file path from session
         if 'squad_html_path' not in session:
-            current_app.logger.warning("Position recalculation: No session data found")
+            current_app.logger.warning(f"Position recalculation: No session data found. Available keys: {list(session.keys())}")
             return {"error": "No analysis data in session. Please upload a squad file first.", "success": False}, 400
 
         html_file_path = session['squad_html_path']
