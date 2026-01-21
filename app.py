@@ -145,6 +145,13 @@ def initialize_projects():
             "url": "/projects/capacity-tracker"
         },
         {
+            "id": "squad-audit-tracker",
+            "name": "Squad Audit Tracker",
+            "description": "Analyze FM squads with per-90 metrics and value scoring.",
+            "status": "active",
+            "url": "/projects/squad-audit-tracker"
+        },
+        {
             "id": "meal-generator",
             "name": "Meal Generator",
             "description": "A tool to help plan weekly meals.",

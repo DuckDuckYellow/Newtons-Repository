@@ -1,0 +1,470 @@
+{% extends "base.html" %}
+
+{% block title %}Squad Audit Tracker - Newton's Repository{% endblock %}
+
+{% block content %}
+<!-- Hero Section -->
+<section class="hero hero-sm">
+    <div class="container">
+        <h1 class="fw-bold mb-2">Squad Audit Tracker</h1>
+        <p class="mb-0 opacity-75">Analyze Football Manager squads with per-90 performance metrics and value scoring</p>
+    </div>
+</section>
+
+<div class="container py-5">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('main.home') }}">Home</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('projects.projects_home') }}">Projects</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Squad Audit Tracker</li>
+        </ol>
+    </nav>
+
+    <!-- Tool Description -->
+    <div class="row mb-5">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h2 class="h5 mb-3">About This Tool</h2>
+                    <p class="mb-2">
+                        Advanced Football Manager squad analysis that uses per-90 minute metrics to identify underutilized elite performers and overvalued assets.
+                    </p>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6 class="fw-semibold">Key Insights:</h6>
+                            <ul class="small mb-3">
+                                <li><strong>Per-90 Analysis:</strong> Find elite performers with limited minutes</li>
+                                <li><strong>Value Scoring:</strong> Performance relative to wages</li>
+                                <li><strong>Position-Specific:</strong> 8 position categories with tailored metrics</li>
+                                <li><strong>Status-Aware:</strong> Intelligent recommendations based on flags</li>
+                            </ul>
+                        </div>
+                        <div class="col-md-6">
+                            <h6 class="fw-semibold">Export Your Squad Data:</h6>
+                            <ul class="small mb-3">
+                                <li>In Football Manager, go to <strong>Squad View</strong></li>
+                                <li>Select all players (or filter as needed)</li>
+                                <li>Right-click column headers → <strong>Export</strong> → <strong>Web Page</strong></li>
+                                <li>Upload the HTML file below</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Error Messages -->
+    {% if errors %}
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <strong><i class="bi bi-exclamation-triangle-fill"></i> Error processing file:</strong>
+        <ul class="mb-0 mt-2">
+            {% for error in errors %}
+            <li>{{ error }}</li>
+            {% endfor %}
+        </ul>
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    </div>
+    {% endif %}
+
+    {% if not analysis_result %}
+    <!-- Upload Form -->
+    <div class="row mb-5">
+        <div class="col-lg-8 mx-auto">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4">
+                    <h5 class="mb-3">Upload FM Squad Export</h5>
+                    <p class="text-muted mb-4">
+                        Upload your Football Manager squad export HTML file for analysis. The tool will parse player statistics and generate comprehensive insights.
+                    </p>
+
+                    <form method="POST" enctype="multipart/form-data" id="squadUploadForm">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+
+                        <div class="mb-4">
+                            <label for="htmlFile" class="form-label fw-semibold">Choose HTML File</label>
+                            <input type="file" class="form-control form-control-lg" id="htmlFile" name="html_file" accept=".html" required>
+                            <div class="form-text">Export from FM Squad View → Right-click headers → Export → Web Page (.html)</div>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary btn-lg">
+                                <i class="bi bi-upload"></i> Analyze Squad
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% if analysis_result %}
+    <!-- Analysis Results -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white border-bottom py-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <h4 class="mb-0">Squad Analysis Results</h4>
+                            <p class="text-muted mb-0 small">
+                                {{ analysis_result.total_players }} players analyzed |
+                                Average Wage: £{{ "{:,.0f}".format(analysis_result.squad_avg_wage) }} p/w
+                            </p>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <a href="{{ url_for('projects.export_squad_audit') }}" class="btn btn-success me-2">
+                                <i class="bi bi-download"></i> Export CSV
+                            </a>
+                            <a href="{{ url_for('projects.squad_audit_tracker') }}" class="btn btn-outline-secondary">
+                                <i class="bi bi-arrow-left"></i> New Analysis
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Stats -->
+                <div class="card-body bg-light border-bottom">
+                    <div class="row text-center">
+                        <div class="col-md-3">
+                            <div class="p-2">
+                                <h3 class="text-success mb-0">{{ analysis_result.get_elite_players()|length }}</h3>
+                                <small class="text-muted">Elite Performers</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-2">
+                                <h3 class="text-danger mb-0">{{ analysis_result.get_poor_performers()|length }}</h3>
+                                <small class="text-muted">Poor Performers</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-2">
+                                <h3 class="text-warning mb-0">{{ analysis_result.get_transfer_listed_elite()|length }}</h3>
+                                <small class="text-muted">Elite on Transfer List</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="p-2">
+                                <h3 class="text-primary mb-0">{{ analysis_result.total_players }}</h3>
+                                <small class="text-muted">Total Players</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters and Search -->
+                <div class="card-body border-bottom">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <input type="text" id="searchInput" class="form-control" placeholder="Search by name...">
+                        </div>
+                        <div class="col-md-3">
+                            <select id="positionFilter" class="form-select">
+                                <option value="">All Positions</option>
+                                <option value="GK">GK - Goalkeeper</option>
+                                <option value="CB">CB - Center Back</option>
+                                <option value="FB">FB - Fullback</option>
+                                <option value="DM">DM - Defensive Mid</option>
+                                <option value="CM">CM - Central Mid</option>
+                                <option value="AM">AM - Attacking Mid</option>
+                                <option value="W">W - Winger</option>
+                                <option value="ST">ST - Striker</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <select id="verdictFilter" class="form-select">
+                                <option value="">All Performance Levels</option>
+                                <option value="ELITE">Elite Only</option>
+                                <option value="GOOD">Good Only</option>
+                                <option value="AVERAGE">Average Only</option>
+                                <option value="POOR">Poor Only</option>
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <button id="clearFilters" class="btn btn-outline-secondary w-100">Clear Filters</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Results Table -->
+                <div class="card-body p-0">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0" id="squadTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th class="sortable" data-sort="name" style="cursor: pointer;">
+                                        Name <i class="bi bi-arrow-down-up"></i>
+                                    </th>
+                                    <th class="sortable" data-sort="position" style="cursor: pointer;">
+                                        Pos <i class="bi bi-arrow-down-up"></i>
+                                    </th>
+                                    <th class="sortable text-center" data-sort="age" style="cursor: pointer;">
+                                        Age <i class="bi bi-arrow-down-up"></i>
+                                    </th>
+                                    <th class="sortable text-end" data-sort="value" style="cursor: pointer;">
+                                        Value Score <i class="bi bi-arrow-down-up"></i>
+                                    </th>
+                                    <th class="sortable" data-sort="verdict" style="cursor: pointer;">
+                                        Performance <i class="bi bi-arrow-down-up"></i>
+                                    </th>
+                                    <th class="text-center">Flag</th>
+                                    <th>Top Metrics</th>
+                                    <th>Recommendation</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for analysis in analysis_result.get_sorted_by_value() %}
+                                <tr class="player-row"
+                                    data-name="{{ analysis.player.name|lower }}"
+                                    data-position="{{ analysis.player.get_position_category().value }}"
+                                    data-verdict="{{ analysis.verdict.value }}">
+                                    <td class="fw-semibold">{{ analysis.player.name }}</td>
+                                    <td><span class="badge bg-secondary">{{ analysis.player.get_position_category().value }}</span></td>
+                                    <td class="text-center">{{ analysis.player.age }}</td>
+                                    <td class="text-end" data-value="{{ analysis.value_score }}">
+                                        <span class="badge bg-{{ analysis.get_value_score_color() }} fs-6">
+                                            {{ "%.1f"|format(analysis.value_score) }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if analysis.verdict.value == 'ELITE' %}
+                                            <span class="badge bg-success">{{ analysis.verdict.value }}</span>
+                                        {% elif analysis.verdict.value == 'GOOD' %}
+                                            <span class="badge bg-info">{{ analysis.verdict.value }}</span>
+                                        {% elif analysis.verdict.value == 'AVERAGE' %}
+                                            <span class="badge bg-warning">{{ analysis.verdict.value }}</span>
+                                        {% else %}
+                                            <span class="badge bg-danger">{{ analysis.verdict.value }}</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        {% if analysis.player.inf %}
+                                            <span class="badge bg-dark">{{ analysis.player.inf }}</span>
+                                        {% else %}
+                                            <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small">
+                                        {% if analysis.top_metrics %}
+                                            {{ analysis.top_metrics|join(' | ') }}
+                                        {% else %}
+                                            <span class="text-muted">N/A</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="small">{{ analysis.recommendation }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="card-footer bg-white text-muted small">
+                    <div class="row">
+                        <div class="col-md-6">
+                            Showing <strong id="visibleCount">{{ analysis_result.total_players }}</strong> of {{ analysis_result.total_players }} players
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            Sorted by <strong id="currentSort">Value Score (Descending)</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Elite Players Highlight -->
+    {% if analysis_result.get_elite_players() %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm border-start border-success border-4">
+                <div class="card-body">
+                    <h5 class="card-title text-success">
+                        <i class="bi bi-star-fill"></i> Elite Performers ({{ analysis_result.get_elite_players()|length }})
+                    </h5>
+                    <p class="text-muted small mb-3">Players performing significantly above their position averages</p>
+                    <div class="row">
+                        {% for analysis in analysis_result.get_elite_players()[:5] %}
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex align-items-start">
+                                <div class="flex-shrink-0">
+                                    <span class="badge bg-success rounded-pill">{{ analysis.player.get_position_category().value }}</span>
+                                </div>
+                                <div class="flex-grow-1 ms-3">
+                                    <h6 class="mb-1">{{ analysis.player.name }} ({{ analysis.player.age }})</h6>
+                                    <p class="mb-1 small">
+                                        <strong>Value:</strong> {{ "%.1f"|format(analysis.value_score) }} |
+                                        <strong>Performance:</strong> {{ "%.1f"|format(analysis.performance_index) }}
+                                    </p>
+                                    <p class="mb-0 small text-muted">{{ analysis.recommendation }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Transfer Listed Elite Warning -->
+    {% if analysis_result.get_transfer_listed_elite() %}
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="alert alert-warning border-start border-warning border-4">
+                <h5 class="alert-heading">
+                    <i class="bi bi-exclamation-triangle-fill"></i> Elite Players on Transfer List
+                </h5>
+                <p class="mb-2">The following elite performers are listed for transfer - consider investigating:</p>
+                <ul class="mb-0">
+                    {% for analysis in analysis_result.get_transfer_listed_elite() %}
+                    <li>
+                        <strong>{{ analysis.player.name }}</strong> ({{ analysis.player.get_position_category().value }}, Age {{ analysis.player.age }}) -
+                        Value Score: {{ "%.1f"|format(analysis.value_score) }}
+                    </li>
+                    {% endfor %}
+                </ul>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    {% endif %}
+
+    <!-- Back to Projects -->
+    <div class="text-center mt-5">
+        <a href="{{ url_for('projects.projects_home') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-left"></i> Back to Projects
+        </a>
+    </div>
+</div>
+
+{% if analysis_result %}
+<!-- JavaScript for Table Sorting and Filtering -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const table = document.getElementById('squadTable');
+    const tbody = table.querySelector('tbody');
+    const rows = Array.from(tbody.querySelectorAll('.player-row'));
+    const searchInput = document.getElementById('searchInput');
+    const positionFilter = document.getElementById('positionFilter');
+    const verdictFilter = document.getElementById('verdictFilter');
+    const clearFiltersBtn = document.getElementById('clearFilters');
+    const visibleCount = document.getElementById('visibleCount');
+    const currentSortLabel = document.getElementById('currentSort');
+
+    let currentSort = { column: 'value', direction: 'desc' };
+
+    // Sorting functionality
+    document.querySelectorAll('.sortable').forEach(header => {
+        header.addEventListener('click', function() {
+            const column = this.dataset.sort;
+
+            // Toggle direction if same column
+            if (currentSort.column === column) {
+                currentSort.direction = currentSort.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                currentSort.column = column;
+                currentSort.direction = 'desc';
+            }
+
+            sortTable(column, currentSort.direction);
+            updateSortLabel();
+        });
+    });
+
+    function sortTable(column, direction) {
+        const sortedRows = rows.sort((a, b) => {
+            let aVal, bVal;
+
+            if (column === 'name') {
+                aVal = a.dataset.name;
+                bVal = b.dataset.name;
+            } else if (column === 'position') {
+                aVal = a.dataset.position;
+                bVal = b.dataset.position;
+            } else if (column === 'verdict') {
+                aVal = a.dataset.verdict;
+                bVal = b.dataset.verdict;
+            } else if (column === 'age') {
+                aVal = parseInt(a.children[2].textContent);
+                bVal = parseInt(b.children[2].textContent);
+            } else if (column === 'value') {
+                aVal = parseFloat(a.children[3].dataset.value);
+                bVal = parseFloat(b.children[3].dataset.value);
+            }
+
+            if (direction === 'asc') {
+                return aVal > bVal ? 1 : -1;
+            } else {
+                return aVal < bVal ? 1 : -1;
+            }
+        });
+
+        // Clear and re-append sorted rows
+        tbody.innerHTML = '';
+        sortedRows.forEach(row => tbody.appendChild(row));
+    }
+
+    function updateSortLabel() {
+        const labels = {
+            name: 'Name',
+            position: 'Position',
+            age: 'Age',
+            value: 'Value Score',
+            verdict: 'Performance'
+        };
+        const direction = currentSort.direction === 'asc' ? 'Ascending' : 'Descending';
+        currentSortLabel.textContent = `${labels[currentSort.column]} (${direction})`;
+    }
+
+    // Filtering functionality
+    function filterRows() {
+        const searchTerm = searchInput.value.toLowerCase();
+        const selectedPosition = positionFilter.value;
+        const selectedVerdict = verdictFilter.value;
+
+        let visibleRowCount = 0;
+
+        rows.forEach(row => {
+            const name = row.dataset.name;
+            const position = row.dataset.position;
+            const verdict = row.dataset.verdict;
+
+            const matchesSearch = !searchTerm || name.includes(searchTerm);
+            const matchesPosition = !selectedPosition || position === selectedPosition;
+            const matchesVerdict = !selectedVerdict || verdict === selectedVerdict;
+
+            if (matchesSearch && matchesPosition && matchesVerdict) {
+                row.style.display = '';
+                visibleRowCount++;
+            } else {
+                row.style.display = 'none';
+            }
+        });
+
+        visibleCount.textContent = visibleRowCount;
+    }
+
+    searchInput.addEventListener('input', filterRows);
+    positionFilter.addEventListener('change', filterRows);
+    verdictFilter.addEventListener('change', filterRows);
+
+    clearFiltersBtn.addEventListener('click', function() {
+        searchInput.value = '';
+        positionFilter.value = '';
+        verdictFilter.value = '';
+        filterRows();
+    });
+
+    // Initial sort label
+    updateSortLabel();
+});
+</script>
+{% endif %}
+
+{% endblock %}

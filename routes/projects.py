@@ -4,8 +4,9 @@ Projects Routes Blueprint
 Handles all project-related routes including the Recruitment Capacity Tracker.
 """
 
-from flask import Blueprint, render_template, request, send_file, current_app
-from io import BytesIO
+from flask import Blueprint, render_template, request, send_file, current_app, session, make_response
+from io import BytesIO, StringIO
+import csv
 from pydantic import ValidationError
 
 projects_bp = Blueprint('projects', __name__, url_prefix='/projects')
@@ -200,3 +201,101 @@ def download_capacity_template():
         as_attachment=True,
         download_name='capacity_tracker_template.xlsx'
     )
+
+
+@projects_bp.route("/squad-audit-tracker", methods=["GET", "POST"])
+def squad_audit_tracker():
+    """
+    Squad Audit Tracker tool for Football Manager squad analysis.
+
+    GET: Display the upload form
+    POST: Process uploaded HTML file and display analysis results
+    """
+    from services.fm_parser import FMHTMLParser
+    from services.squad_audit_service import SquadAuditService
+
+    analysis_result = None
+    errors = []
+
+    if request.method == "POST":
+        # Check if file was uploaded
+        if 'html_file' not in request.files:
+            errors.append("No file uploaded")
+            current_app.logger.warning("Squad audit: No file in request")
+        else:
+            file = request.files['html_file']
+
+            if file.filename == '':
+                errors.append("No file selected")
+                current_app.logger.warning("Squad audit: Empty filename")
+            elif not file.filename.endswith('.html'):
+                errors.append("Please upload an HTML file (.html)")
+                current_app.logger.warning(f"Squad audit: Invalid file type: {file.filename}")
+            else:
+                try:
+                    current_app.logger.info(f"Squad audit: Processing {file.filename}")
+
+                    # Read HTML content
+                    html_content = file.read().decode('utf-8')
+
+                    # Parse HTML
+                    parser = FMHTMLParser()
+                    squad = parser.parse_html(html_content)
+
+                    current_app.logger.info(f"Squad audit: Parsed {len(squad.players)} players")
+
+                    # Analyze squad
+                    service = SquadAuditService()
+                    analysis_result = service.analyze_squad(squad)
+
+                    # Store result in session for CSV export
+                    session['squad_analysis_csv'] = service.export_to_csv_data(analysis_result)
+
+                    current_app.logger.info("Squad audit: Analysis complete")
+
+                except ValueError as ve:
+                    error_msg = f"Invalid HTML format: {str(ve)}"
+                    errors.append(error_msg)
+                    current_app.logger.error(f"Squad audit parse error: {ve}")
+                except Exception as e:
+                    error_msg = f"Error processing file: {str(e)}"
+                    errors.append(error_msg)
+                    current_app.logger.error(f"Squad audit error: {e}")
+
+    return render_template(
+        "projects/squad_audit_tracker.html",
+        analysis_result=analysis_result,
+        errors=errors
+    )
+
+
+@projects_bp.route("/squad-audit-tracker/export")
+def export_squad_audit():
+    """
+    Export squad audit analysis results to CSV.
+    """
+    current_app.logger.info("Squad audit CSV export requested")
+
+    # Get CSV data from session
+    csv_data = session.get('squad_analysis_csv', [])
+
+    if not csv_data:
+        current_app.logger.warning("Squad audit export: No data in session")
+        return "No analysis data available. Please analyze a squad first.", 400
+
+    # Create CSV in memory
+    output = StringIO()
+    if csv_data:
+        fieldnames = csv_data[0].keys()
+        writer = csv.DictWriter(output, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(csv_data)
+
+    # Create response
+    response = make_response(output.getvalue())
+    response.headers["Content-Disposition"] = "attachment; filename=squad_audit_analysis.csv"
+    response.headers["Content-Type"] = "text/csv"
+
+    current_app.logger.info("Squad audit: CSV export complete")
+
+    return response
