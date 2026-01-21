@@ -677,7 +677,17 @@ document.addEventListener('DOMContentLoaded', function() {
                     new_position: newPosition
                 })
             })
-            .then(response => response.json())
+            .then(response => {
+                if (!response.ok) {
+                    // Try to parse error message from response
+                    return response.json().then(data => {
+                        throw new Error(data.error || 'Server error');
+                    }).catch(() => {
+                        throw new Error('Server error: ' + response.status);
+                    });
+                }
+                return response.json();
+            })
             .then(data => {
                 if (data.success) {
                     // Update the row with new data
@@ -693,14 +703,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     setTimeout(() => row.classList.remove('table-success'), 1000);
                 } else {
                     console.error('Recalculation failed:', data.error);
-                    alert('Error: ' + data.error);
+                    alert('Error: ' + (data.error || 'Unknown error'));
                     row.style.opacity = '1';
                     row.style.pointerEvents = 'auto';
                 }
             })
             .catch(error => {
                 console.error('Error:', error);
-                alert('Failed to recalculate position. Please try again.');
+                alert('Failed to recalculate position: ' + error.message);
                 row.style.opacity = '1';
                 row.style.pointerEvents = 'auto';
             });
