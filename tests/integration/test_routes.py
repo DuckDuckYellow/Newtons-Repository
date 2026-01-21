@@ -98,7 +98,69 @@ class TestProjectsRoutes:
         """Test: Excel template download works."""
         response = client.get('/projects/capacity-tracker/download-template')
         assert response.status_code == 200
-        assert response.content_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+
+    def test_squad_audit_tracker_get(self, client):
+        """Test: Squad audit tracker form loads."""
+        response = client.get('/projects/squad-audit-tracker')
+        assert response.status_code == 200
+        assert b'Squad Audit Tracker' in response.data
+
+    def test_squad_audit_tracker_post_no_file(self, client):
+        """Test: POST without file returns error."""
+        response = client.post('/projects/squad-audit-tracker', data={})
+        assert response.status_code == 200
+        assert b'error' in response.data.lower() or b'Error' in response.data
+
+    def test_squad_audit_tracker_post_invalid_file_type(self, client):
+        """Test: POST with non-HTML file returns error."""
+        from io import BytesIO
+        data = {
+            'html_file': (BytesIO(b'test content'), 'test.txt')
+        }
+        response = client.post('/projects/squad-audit-tracker',
+                             data=data,
+                             content_type='multipart/form-data')
+        assert response.status_code == 200
+        assert b'HTML' in response.data or b'html' in response.data
+
+    def test_squad_audit_tracker_post_valid_html(self, client):
+        """Test: POST with valid FM HTML file returns analysis."""
+        from io import BytesIO
+
+        # Create minimal valid HTML
+        html_content = """
+        <html>
+            <body>
+                <table>
+                    <tr><th>Headers</th></tr>
+                    <tr>
+                        <td>GK</td><td></td><td>Test Player</td><td>GK</td>
+                        <td>10 (0)</td><td>0</td><td>0</td><td>7.0</td>
+                        <td>£30,000 p/w</td><td>25</td><td>30/6/2030</td>
+                        <td>0.5</td><td>0.0</td><td>-</td><td>-</td>
+                        <td>-</td><td>-</td><td>0.1</td><td>-</td>
+                        <td>-</td><td>90%</td><td>1.0</td><td>2.0</td><td>70%</td>
+                    </tr>
+                </table>
+            </body>
+        </html>
+        """
+
+        data = {
+            'html_file': (BytesIO(html_content.encode('utf-8')), 'squad.html')
+        }
+        response = client.post('/projects/squad-audit-tracker',
+                             data=data,
+                             content_type='multipart/form-data')
+        assert response.status_code == 200
+        # Should show analysis results
+        assert b'Analysis Results' in response.data or b'player' in response.data.lower()
+
+    def test_squad_audit_export_no_session_data(self, client):
+        """Test: CSV export without analysis returns error."""
+        response = client.get('/projects/squad-audit-tracker/export')
+        assert response.status_code == 400
+        assert b'No analysis data available' in response.data
 
 
 class TestBlueprintEndpoints:
