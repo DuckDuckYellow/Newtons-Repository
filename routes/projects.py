@@ -272,6 +272,7 @@ def squad_audit_tracker():
     # Generate formation suggestions if we have an analysis result
     formation_suggestions = None
     if analysis_result:
+        service = SquadAuditService()
         formation_suggestions = service.suggest_formations(analysis_result, top_n=3)
 
     return render_template(
@@ -325,70 +326,79 @@ def recalculate_player_position():
     from services.squad_audit_service import SquadAuditService
     from models.squad_audit import PositionCategory
     import json
-
-    current_app.logger.info("Position recalculation requested")
-
-    data = request.get_json()
-    player_name = data.get('player_name')
-    new_position = data.get('new_position')
-
-    if not player_name or not new_position:
-        return {"error": "Missing player_name or new_position"}, 400
-
-    # Get stored analysis result from session
-    if 'squad_analysis_result' not in session:
-        return {"error": "No analysis data in session"}, 400
-
-    # Deserialize the stored squad and result
     import pickle
-    squad = pickle.loads(session['squad_analysis_result']['squad'])
 
-    # Find the player
-    player = None
-    for p in squad.players:
-        if p.name == player_name:
-            player = p
-            break
-
-    if not player:
-        return {"error": f"Player {player_name} not found"}, 404
-
-    # Validate the new position is valid for this player
     try:
-        new_pos_category = PositionCategory(new_position)
-    except ValueError:
-        return {"error": f"Invalid position: {new_position}"}, 400
+        current_app.logger.info("Position recalculation requested")
 
-    possible_positions = player.get_all_possible_positions()
-    if new_pos_category not in possible_positions:
-        return {"error": f"Player cannot play {new_position}"}, 400
+        data = request.get_json()
+        player_name = data.get('player_name')
+        new_position = data.get('new_position')
 
-    # Recalculate analysis with the new position
-    service = SquadAuditService()
+        if not player_name or not new_position:
+            return {"error": "Missing player_name or new_position", "success": False}, 400
 
-    # Get the full analysis result to access position benchmarks
-    full_result = service.analyze_squad(squad)
-    position_benchmarks = full_result.position_benchmarks
-    squad_avg_wage = full_result.squad_avg_wage
+        # Get stored analysis result from session
+        if 'squad_analysis_result' not in session:
+            current_app.logger.warning("Position recalculation: No session data found")
+            return {"error": "No analysis data in session. Please upload a squad file first.", "success": False}, 400
 
-    # Analyze this specific player with the new position override
-    analysis = service._analyze_player(
-        player,
-        position_benchmarks,
-        squad_avg_wage,
-        position_override=new_pos_category
-    )
+        # Deserialize the stored squad and result
+        squad = pickle.loads(session['squad_analysis_result']['squad'])
 
-    # Return the updated analysis data
-    return {
-        "success": True,
-        "player_name": player.name,
-        "position": new_position,
-        "value_score": round(analysis.value_score, 1),
-        "value_score_color": analysis.get_value_score_color(),
-        "performance_index": round(analysis.performance_index, 1),
-        "verdict": analysis.verdict.value,
-        "recommendation": analysis.recommendation,
-        "top_metrics": analysis.top_metrics,
-        "contract_warning": analysis.contract_warning
-    }
+        # Find the player
+        player = None
+        for p in squad.players:
+            if p.name == player_name:
+                player = p
+                break
+
+        if not player:
+            current_app.logger.warning(f"Position recalculation: Player {player_name} not found")
+            return {"error": f"Player {player_name} not found", "success": False}, 404
+
+        # Validate the new position is valid for this player
+        try:
+            new_pos_category = PositionCategory(new_position)
+        except ValueError:
+            return {"error": f"Invalid position: {new_position}", "success": False}, 400
+
+        possible_positions = player.get_all_possible_positions()
+        if new_pos_category not in possible_positions:
+            return {"error": f"Player cannot play {new_position}", "success": False}, 400
+
+        # Recalculate analysis with the new position
+        service = SquadAuditService()
+
+        # Get the full analysis result to access position benchmarks
+        full_result = service.analyze_squad(squad)
+        position_benchmarks = full_result.position_benchmarks
+        squad_avg_wage = full_result.squad_avg_wage
+
+        # Analyze this specific player with the new position override
+        analysis = service._analyze_player(
+            player,
+            position_benchmarks,
+            squad_avg_wage,
+            position_override=new_pos_category
+        )
+
+        current_app.logger.info(f"Position recalculation successful for {player_name}")
+
+        # Return the updated analysis data
+        return {
+            "success": True,
+            "player_name": player.name,
+            "position": new_position,
+            "value_score": round(analysis.value_score, 1),
+            "value_score_color": analysis.get_value_score_color(),
+            "performance_index": round(analysis.performance_index, 1),
+            "verdict": analysis.verdict.value,
+            "recommendation": analysis.recommendation,
+            "top_metrics": analysis.top_metrics,
+            "contract_warning": analysis.contract_warning
+        }
+
+    except Exception as e:
+        current_app.logger.error(f"Position recalculation error: {str(e)}")
+        return {"error": f"An error occurred: {str(e)}", "success": False}, 500
