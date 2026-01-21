@@ -216,6 +216,8 @@
                                         Performance <i class="bi bi-arrow-down-up"></i>
                                     </th>
                                     <th class="text-center">Flag</th>
+                                    <th class="text-end">Wage</th>
+                                    <th class="text-center">Contract</th>
                                     <th>Top Metrics</th>
                                     <th>Recommendation</th>
                                 </tr>
@@ -250,6 +252,13 @@
                                             <span class="badge bg-dark">{{ analysis.player.inf }}</span>
                                         {% else %}
                                             <span class="text-muted">-</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-end small">{{ analysis.player.get_wage_formatted() }}</td>
+                                    <td class="text-center small {% if analysis.contract_warning %}text-danger fw-bold{% endif %}">
+                                        {{ analysis.player.expires }}
+                                        {% if analysis.contract_warning %}
+                                            <i class="bi bi-exclamation-triangle-fill text-danger"></i>
                                         {% endif %}
                                     </td>
                                     <td class="small">
@@ -389,6 +398,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     function sortTable(column, direction) {
+        // Performance verdict order mapping (ELITE > GOOD > AVERAGE > POOR)
+        const verdictOrder = {
+            'ELITE': 1,
+            'GOOD': 2,
+            'AVERAGE': 3,
+            'POOR': 4
+        };
+
         const sortedRows = rows.sort((a, b) => {
             let aVal, bVal;
 
@@ -399,8 +416,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 aVal = a.dataset.position;
                 bVal = b.dataset.position;
             } else if (column === 'verdict') {
-                aVal = a.dataset.verdict;
-                bVal = b.dataset.verdict;
+                // Use verdict order mapping instead of alphabetical
+                aVal = verdictOrder[a.dataset.verdict] || 99;
+                bVal = verdictOrder[b.dataset.verdict] || 99;
             } else if (column === 'age') {
                 aVal = parseInt(a.children[2].textContent);
                 bVal = parseInt(b.children[2].textContent);

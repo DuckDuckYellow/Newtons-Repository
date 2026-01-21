@@ -423,6 +423,16 @@ class TestAnalysisResultMethods:
         )
         assert analysis_expected.get_value_score_color() == 'warning'
 
+        # Below expected value (80-100)
+        analysis_below = PlayerAnalysis(
+            player=sample_player,
+            performance_index=90.0,
+            value_score=85.0,
+            verdict=PerformanceVerdict.AVERAGE,
+            recommendation='Test'
+        )
+        assert analysis_below.get_value_score_color() == 'dark'
+
         # Poor value (< 80)
         analysis_poor = PlayerAnalysis(
             player=sample_player,
