@@ -205,7 +205,12 @@
                                         Age <i class="bi bi-arrow-down-up"></i>
                                     </th>
                                     <th class="sortable text-end" data-sort="value" style="cursor: pointer;">
-                                        Value Score <i class="bi bi-arrow-down-up"></i>
+                                        Value Score
+                                        <i class="bi bi-info-circle text-muted"
+                                           data-bs-toggle="tooltip"
+                                           data-bs-placement="top"
+                                           title="Value Score = (Performance Index / Wage Index) × 100. Higher is better. 150+ = Elite value, 120-150 = Good value, 100-120 = Expected, 80-100 = Below expected, <80 = Poor value"></i>
+                                        <i class="bi bi-arrow-down-up"></i>
                                     </th>
                                     <th class="sortable" data-sort="verdict" style="cursor: pointer;">
                                         Performance <i class="bi bi-arrow-down-up"></i>
@@ -347,6 +352,12 @@
 <!-- JavaScript for Table Sorting and Filtering -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Bootstrap tooltips
+    var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
     const table = document.getElementById('squadTable');
     const tbody = table.querySelector('tbody');
     const rows = Array.from(tbody.querySelectorAll('.player-row'));

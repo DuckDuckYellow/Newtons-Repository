@@ -295,14 +295,16 @@ class SquadAuditService:
         Returns:
             Recommendation text
         """
+        # Check for insufficient sample size (0-5 appearances)
+        if player.apps <= 5:
+            return "USE OR SELL - Insufficient data (low appearances)"
+
         status = player.get_status_flag()
         age = player.age
 
         # Elite performers
         if verdict == PerformanceVerdict.ELITE:
-            if status == StatusFlag.INJURED:
-                return "PRIORITY RECOVERY - Elite performer, accelerate rehabilitation"
-            elif status == StatusFlag.TRANSFER_LISTED:
+            if status == StatusFlag.TRANSFER_LISTED:
                 return "INVESTIGATE TRANSFER LISTING - Elite metrics suggest retention"
             elif status == StatusFlag.U21:
                 return "PROMOTE TO SENIOR TEAM - Elite performance at young age"
@@ -317,9 +319,7 @@ class SquadAuditService:
 
         # Good performers
         elif verdict == PerformanceVerdict.GOOD:
-            if status == StatusFlag.INJURED:
-                return "Monitor recovery - Good performer when fit"
-            elif status == StatusFlag.TRANSFER_LISTED:
+            if status == StatusFlag.TRANSFER_LISTED:
                 return "Reconsider transfer - Good performance metrics"
             elif status == StatusFlag.U21:
                 return "Continue development - Good progress for age"
@@ -330,9 +330,7 @@ class SquadAuditService:
 
         # Average performers
         elif verdict == PerformanceVerdict.AVERAGE:
-            if status == StatusFlag.INJURED:
-                return "Standard recovery - Average performer"
-            elif status == StatusFlag.TRANSFER_LISTED:
+            if status == StatusFlag.TRANSFER_LISTED:
                 return "SELL - Average metrics, listed for transfer"
             elif status == StatusFlag.U21:
                 return "Continue rotation - Development ongoing"

@@ -101,8 +101,8 @@ class TestSquadAuditService:
         # Poor: < 85
         assert squad_audit_service._get_performance_verdict(75.0) == PerformanceVerdict.POOR
 
-    def test_recommendation_for_elite_injured_player(self, squad_audit_service):
-        """Test recommendation for elite injured player."""
+    def test_recommendation_for_elite_player_with_sufficient_apps(self, squad_audit_service):
+        """Test recommendation for elite player with sufficient appearances."""
         player = Player(
             name='Test Player',
             position_selected='ST',
@@ -115,7 +115,7 @@ class TestSquadAuditService:
             ast=3,
             av_rat=7.5,
             expires='30/6/2030',
-            inf='Inj'
+            inf=''
         )
 
         recommendation = squad_audit_service._generate_recommendation(
@@ -124,7 +124,7 @@ class TestSquadAuditService:
             150.0
         )
 
-        assert 'PRIORITY RECOVERY' in recommendation
+        assert 'LOCK IN STARTER' in recommendation
 
     def test_recommendation_for_transfer_listed_elite(self, squad_audit_service):
         """Test recommendation for elite player on transfer list."""
@@ -175,6 +175,32 @@ class TestSquadAuditService:
         )
 
         assert 'SELL' in recommendation
+
+    def test_recommendation_for_low_sample_size(self, squad_audit_service):
+        """Test recommendation for player with 5 or fewer apps."""
+        player = Player(
+            name='Test Player',
+            position_selected='ST',
+            position='ST (C)',
+            age=25,
+            wage=30000.0,
+            apps=3,  # Low sample size
+            subs=1,
+            gls=2,
+            ast=1,
+            av_rat=8.0,
+            expires='30/6/2030',
+            inf=''
+        )
+
+        recommendation = squad_audit_service._generate_recommendation(
+            player,
+            PerformanceVerdict.ELITE,  # Even with elite verdict
+            150.0
+        )
+
+        assert 'USE OR SELL' in recommendation
+        assert 'Insufficient data' in recommendation
 
     def test_contract_warning_expiring_soon(self, squad_audit_service):
         """Test contract warning for contracts expiring soon."""
