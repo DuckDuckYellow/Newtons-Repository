@@ -5,10 +5,10 @@ Handles all project-related routes including the Recruitment Capacity Tracker.
 """
 
 from flask import Blueprint, render_template, request, send_file, current_app, session, make_response
-from extensions import csrf
 from io import BytesIO, StringIO
 import csv
 from pydantic import ValidationError
+from app import csrf
 
 projects_bp = Blueprint('projects', __name__, url_prefix='/projects')
 
