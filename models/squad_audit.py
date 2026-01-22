@@ -148,3 +148,15 @@ class SquadAnalysisResult:
     position_benchmarks: Dict[str, Dict[str, float]] = field(default_factory=dict)
     squad_avg_wage: float = 0.0
     total_players: int = 0
+
+    def get_elite_players(self) -> List[PlayerAnalysis]:
+        return [a for a in self.player_analyses if a.verdict == PerformanceVerdict.ELITE]
+
+    def get_poor_performers(self) -> List[PlayerAnalysis]:
+        return [a for a in self.player_analyses if a.verdict == PerformanceVerdict.POOR]
+
+    def get_transfer_listed_elite(self) -> List[PlayerAnalysis]:
+        return [a for a in self.get_elite_players() if a.player.get_status_flag() == StatusFlag.TRANSFER_LISTED]
+
+    def get_sorted_by_value(self) -> List[PlayerAnalysis]:
+        return sorted(self.player_analyses, key=lambda x: x.value_score, reverse=True)
