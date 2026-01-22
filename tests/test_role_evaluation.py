@@ -20,7 +20,7 @@ class TestParserV2:
     def test_parse_new_format(self):
         """Test parsing the new 32-column FM export."""
         # Read the new format file
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -39,7 +39,7 @@ class TestParserV2:
 
     def test_player_metrics_extracted(self):
         """Test that all metrics are extracted correctly."""
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -56,7 +56,7 @@ class TestParserV2:
 
     def test_normalized_metrics(self):
         """Test that get_normalized_metrics works."""
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -109,7 +109,7 @@ class TestRoleEvaluator:
     def test_evaluate_player_for_role(self):
         """Test evaluating a player against a specific role."""
         # Parse squad
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -134,7 +134,7 @@ class TestRoleEvaluator:
 
     def test_evaluate_all_roles(self):
         """Test evaluating a player against all roles."""
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -153,7 +153,7 @@ class TestRoleEvaluator:
 
     def test_get_best_role(self):
         """Test getting the best role for a player."""
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -169,7 +169,7 @@ class TestRoleEvaluator:
 
     def test_goalkeeper_best_role(self):
         """Test that a goalkeeper is correctly identified as GK role."""
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -191,7 +191,7 @@ class TestRoleRecommendations:
 
     def test_get_role_recommendations(self):
         """Test getting role recommendations."""
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -214,7 +214,7 @@ class TestRoleRecommendations:
 
     def test_recommendation_text_generation(self):
         """Test generating recommendation text."""
-        with open('Go Ahead - New Format.html', 'r') as f:
+        with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
             html_content = f.read()
 
         parser = FMHTMLParserV2()
@@ -238,7 +238,7 @@ class TestRoleRecommendations:
 def test_integration_full_pipeline():
     """Test the complete pipeline from HTML to role recommendations."""
     # 1. Parse HTML
-    with open('Go Ahead - New Format.html', 'r') as f:
+    with open('Go Ahead - New Format.html', 'r', encoding='utf-8') as f:
         html_content = f.read()
 
     parser = FMHTMLParserV2()

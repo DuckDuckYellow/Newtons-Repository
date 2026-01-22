@@ -6,7 +6,7 @@ including players, squads, and analysis results.
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict
+from typing import Optional, List, Dict, Any
 from enum import Enum
 
 
@@ -123,6 +123,14 @@ class Player:
     op_crs_c_90: Optional[float] = None             # Open Play Crosses Completed per 90
     itc: Optional[int] = None                       # Information/stat from FM
     shts_blckd_90: Optional[float] = None           # Shots Blocked per 90
+    
+    # Role Evaluation Fields (Task 2.3)
+    all_role_scores: List = field(default_factory=list)      # List[RoleScore]
+    best_role: Any = None                                    # RoleScore (Global Best)
+    current_role_score: Any = None                           # RoleScore (Best in Current Position)
+    recommended_role: Any = None                             # RoleScore (Alternative Recommendation)
+    role_change_confidence: float = 0.0
+    role_change_reason: str = ""
 
     def _parse_position_string(self, pos_str: str) -> PositionCategory:
         """
@@ -395,6 +403,36 @@ class Player:
         metrics['save_pct'] = self.sv_pct or 0.0
 
         return metrics
+    
+    def evaluate_roles(self):
+        """
+        Evaluate and store all role scores using the Recommendation Engine.
+        """
+        # Local import to avoid circular dependency
+        from analyzers.role_recommendation_engine import RoleRecommendationEngine
+        
+        engine = RoleRecommendationEngine()
+        
+        # 1. Evaluate all roles
+        self.all_role_scores = engine.evaluate_all_roles(self)
+        
+        # 2. Identify global best role
+        self.best_role = self.all_role_scores[0]
+        
+        # 3. Identify best role in current position (for context)
+        self.current_role_score = engine.get_best_role_in_current_position(self, self.all_role_scores)
+        
+        # 4. Get recommendations (alternatives)
+        recommendations = engine.get_role_recommendations(self)
+        
+        if recommendations:
+            top_rec = recommendations[0]
+            self.recommended_role = top_rec
+            self.role_change_confidence = top_rec.overall_score
+            
+            # Generate reason comparing to current best position role (or global best if undefined)
+            compare_to = self.current_role_score if self.current_role_score else self.best_role
+            self.role_change_reason = engine.evaluator.generate_role_recommendation_text(top_rec, compare_to)
 
     def get_wage_formatted(self) -> str:
         """Format wage as '£XX,XXX p/w'."""
