@@ -11,12 +11,12 @@ from models.constants import PositionCategory
 class StatusFlag(Enum):
     """Player status flags."""
     INJURED = "Inj"
-    TRANSFER_LISTED = "Wnt"
+    TRANSFER_LISTED = "Lst"  # Player is on the transfer list
+    WANTED = "Wnt"           # Player is wanted by other clubs
     U21 = "U21"
     PRE_CONTRACT = "PR"
     UNRELIABLE = "Unr"
     YELLOW_CARD = "Yel"
-    DEPARTED = "Lst"
     NONE = ""
 
 class PerformanceVerdict(Enum):
@@ -117,12 +117,12 @@ class Player:
     def get_status_flag(self) -> StatusFlag:
         flag_map = {
             "Inj": StatusFlag.INJURED,
-            "Wnt": StatusFlag.TRANSFER_LISTED,
+            "Lst": StatusFlag.TRANSFER_LISTED,  # Player is on transfer list
+            "Wnt": StatusFlag.WANTED,           # Player is wanted by other clubs
             "U21": StatusFlag.U21,
             "PR": StatusFlag.PRE_CONTRACT,
             "Unr": StatusFlag.UNRELIABLE,
             "Yel": StatusFlag.YELLOW_CARD,
-            "Lst": StatusFlag.DEPARTED,
         }
         return flag_map.get(self.inf, StatusFlag.NONE)
 
