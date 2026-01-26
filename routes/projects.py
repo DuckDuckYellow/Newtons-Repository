@@ -396,6 +396,11 @@ def squad_audit_tracker():
     formation_suggestions = None
     if analysis_result:
         formation_suggestions = squad_manager.get_formation_suggestions_with_xi(analysis_result)
+        # Update recommendations for players in the Best XI (BACKUP → REGULAR STARTER)
+        if formation_suggestions:
+            from services.squad_audit_service import SquadAuditService
+            audit_service = SquadAuditService()
+            audit_service.update_recommendations_with_best_xi(analysis_result, formation_suggestions)
 
     return render_template(
         "projects/squad_audit_tracker.html",

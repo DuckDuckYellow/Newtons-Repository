@@ -774,3 +774,47 @@ class SquadAuditService:
                 formation_result['best_xi'] = self.generate_best_xi(formation_def, result)
 
         return formations
+
+    def update_recommendations_with_best_xi(
+        self,
+        result: SquadAnalysisResult,
+        formation_suggestions: List[Dict]
+    ) -> None:
+        """
+        Update player recommendations based on Best XI selection.
+
+        Players in the top formation's starting XI who would otherwise be labeled
+        as "BACKUP" (GOOD/AVERAGE tier) should be labeled "REGULAR STARTER" instead.
+
+        Args:
+            result: The squad analysis result with player analyses
+            formation_suggestions: Formation suggestions with best_xi data
+        """
+        if not formation_suggestions:
+            return
+
+        # Get the top formation's Best XI (first formation is the best fit)
+        top_formation = formation_suggestions[0]
+        best_xi = top_formation.get('best_xi')
+        if not best_xi:
+            return
+
+        # Get player names from the starting XI
+        # starting_xi is Dict[PositionCategory, List[PlayerAssignment]], use get_xi_as_list()
+        # PlayerAssignment has player_analysis.player, not player directly
+        xi_player_names = set()
+        for assignment in best_xi.get_xi_as_list():
+            xi_player_names.add(assignment.player_analysis.player.name)
+
+        # Update recommendations for players in the XI who have "BACKUP" badge
+        for analysis in result.player_analyses:
+            if analysis.player.name in xi_player_names:
+                if analysis.recommendation.badge == "BACKUP":
+                    # Update to REGULAR STARTER
+                    analysis.recommendation = Recommendation(
+                        badge="REGULAR STARTER",
+                        icon="▶",
+                        color="info",
+                        explanation="Starting XI in best formation",
+                        has_contract_warning=analysis.recommendation.has_contract_warning
+                    )
