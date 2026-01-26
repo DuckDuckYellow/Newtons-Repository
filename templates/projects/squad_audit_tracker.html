@@ -1959,6 +1959,12 @@ document.addEventListener('DOMContentLoaded', function() {
     // Division dropdown with search (many options)
     const divisionSelect = document.getElementById('division');
     if (divisionSelect && typeof TomSelect !== 'undefined') {
+        // Remove "OTHER" optgroup options before initializing Tom Select
+        const otherOptgroup = divisionSelect.querySelector('optgroup[label*="OTHER"]');
+        if (otherOptgroup) {
+            otherOptgroup.remove();
+        }
+
         const divisionTS = new TomSelect('#division', {
             create: false,
             sortField: { field: 'text', direction: 'asc' },
@@ -1972,6 +1978,13 @@ document.addEventListener('DOMContentLoaded', function() {
                 },
                 item: function(data, escape) {
                     return '<div class="item">' + escape(data.text) + '</div>';
+                },
+                optgroup_header: function(data, escape) {
+                    // Skip rendering if it's the "OTHER" group
+                    if (data.label && data.label.includes('OTHER')) {
+                        return '';
+                    }
+                    return '<div class="optgroup-header">' + escape(data.label) + '</div>';
                 }
             },
             onInitialize: function() {
