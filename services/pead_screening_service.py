@@ -78,7 +78,8 @@ class PEADScreeningService:
             .join(Stock, SUECalculation.stock_id == Stock.id)
             .join(EarningsReport, db.and_(
                 EarningsReport.stock_id == Stock.id,
-                EarningsReport.report_date == SUECalculation.report_date
+                EarningsReport.report_date == SUECalculation.report_date,
+                EarningsReport.upload_batch_id == upload_batch_id  # Ensure report is from same batch
             ))
             .filter(SUECalculation.upload_batch_id == upload_batch_id)
             .filter(SUECalculation.sue_score.isnot(None))

@@ -71,6 +71,9 @@ class PEADScreeningManager:
         errors = []
 
         try:
+            # Step 0: Clean up previous batch from this session (if any)
+            self._cleanup_previous_batch()
+
             # Step 1: Create upload batch
             batch = UploadBatch(
                 batch_uuid=str(uuid.uuid4()),
@@ -390,6 +393,45 @@ class PEADScreeningManager:
 
             sue_calc.recommendation = recommendation
             sue_calc.recommendation_explanation = explanation
+
+    def _cleanup_previous_batch(self) -> None:
+        """
+        Delete previous batch from this session to prevent database bloat.
+
+        When a user uploads multiple CSV files in the same session, we delete
+        the old batch and all its batch-specific data (earnings reports, SUE calculations).
+
+        Note: Stocks are NOT deleted because they are shared across batches
+        (ticker has unique constraint).
+        """
+        if not has_request_context():
+            return
+
+        # Get previous batch UUID from session
+        previous_batch_uuid = session.get('pead_batch_uuid')
+        if not previous_batch_uuid:
+            return
+
+        # Find the previous batch
+        previous_batch = UploadBatch.query.filter_by(batch_uuid=previous_batch_uuid).first()
+        if not previous_batch:
+            return
+
+        current_app.logger.info(f"Cleaning up previous batch: {previous_batch_uuid}")
+
+        # Delete all SUE calculations for this batch
+        deleted_sue = SUECalculation.query.filter_by(upload_batch_id=previous_batch.id).delete()
+
+        # Delete all earnings reports for this batch
+        deleted_reports = EarningsReport.query.filter_by(upload_batch_id=previous_batch.id).delete()
+
+        # Delete the batch itself
+        db.session.delete(previous_batch)
+
+        # Commit the deletions
+        db.session.commit()
+
+        current_app.logger.info(f"Successfully deleted previous batch: {previous_batch_uuid} ({deleted_reports} reports, {deleted_sue} SUE calcs)")
 
     def _persist_to_session(
         self,
