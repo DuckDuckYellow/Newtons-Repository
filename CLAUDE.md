@@ -20,7 +20,7 @@ This document provides comprehensive guidance for AI assistants working on Newto
 ## Project Overview
 
 **Name:** Newton's Repository
-**Type:** Flask web application (blog + Football Manager tools)
+**Type:** Flask web application (blog + Football Manager tools + Financial analysis tools)
 **Live URL:** https://newtonsrepository.dev/
 **Tech Stack:** Python 3, Flask, Pydantic, OpenPyXL, BeautifulSoup4, Bootstrap 5
 
@@ -29,6 +29,7 @@ This document provides comprehensive guidance for AI assistants working on Newto
 1. **Blog System** - Football Manager save stories with series navigation
 2. **Squad Audit Tracker** - Analyze FM squads with per-90 metrics, role evaluation, and value scoring
 3. **Recruitment Capacity Tracker** - Calculate recruiter workload and team capacity
+4. **PEAD Screener** - Post-Earnings Announcement Drift detection with earnings quality analysis
 
 ---
 
@@ -74,6 +75,7 @@ Routes are organized by domain:
 - `main_bp` - Homepage, about page, general navigation
 - `blog_bp` - Article listing, individual articles, categories
 - `projects_bp` - Squad Audit Tracker, Capacity Tracker
+- `financial_bp` - PEAD Screener, earnings quality analysis
 
 **Location:** All blueprints are in `/routes/` and registered in `app.py:register_blueprints()`
 
@@ -112,7 +114,8 @@ Test-Webpage/
 │   ├── __init__.py            # Exports all blueprints
 │   ├── main.py                # Homepage, about, general routes
 │   ├── blog.py                # Blog/article routes
-│   └── projects.py            # Squad Audit & Capacity Tracker routes
+│   ├── projects.py            # Squad Audit & Capacity Tracker routes
+│   └── financial.py           # PEAD Screener & earnings quality routes
 │
 ├── services/                   # Business logic layer
 │   ├── blog_service.py        # Article management
@@ -124,7 +127,11 @@ Test-Webpage/
 │   ├── fm_parser.py           # Football Manager HTML parser (legacy)
 │   ├── fm_parser_v2.py        # Football Manager HTML parser (new format)
 │   ├── parser_factory.py      # Detects FM format & returns parser
-│   └── league_baseline_generator.py # Parses wage exports & generates baselines
+│   ├── league_baseline_generator.py # Parses wage exports & generates baselines
+│   ├── earnings_quality_service.py # Sector-aware earnings quality metrics
+│   ├── pead_screening_service.py   # PEAD detection & stock filtering
+│   ├── pead_screening_manager.py   # Orchestrates PEAD analysis pipeline
+│   └── sue_calculation_service.py  # Standardized Unexpected Earnings calculation
 │
 ├── models/                     # Data structures (Pydantic/dataclasses)
 │   ├── article.py             # Article, BlogCategory
@@ -132,6 +139,7 @@ Test-Webpage/
 │   ├── vacancy.py             # Vacancy, Recruiter, TeamSummary
 │   ├── role_definitions.py    # RoleDefinition, role requirements
 │   ├── league_baseline.py     # LeagueWageBaseline, LeagueBaselineCollection
+│   ├── financial.py           # Stock, EarningsReport, PEADScreenerResult
 │   └── constants.py           # PositionCategory, metrics mappings
 │
 ├── schemas/                    # Input validation (Pydantic)
@@ -187,6 +195,10 @@ Test-Webpage/
 | **FMHTMLParser** | `fm_parser.py` | Parses FM HTML (legacy format) | `parse_html()` |
 | **FMHTMLParserV2** | `fm_parser_v2.py` | Parses FM HTML (new format) | `parse_html()` |
 | **LeagueBaselineGenerator** | `league_baseline_generator.py` | Parses wage exports & generates baselines | `parse_wage_export_html()`, `generate_baselines()`, `calculate_gk_multiplier()` |
+| **EarningsQualityService** | `earnings_quality_service.py` | Sector-aware earnings quality metrics | `calculate_quality_score_for_stock()`, `calculate_accruals_ratio()`, `calculate_cash_flow_to_assets()` |
+| **PEADScreeningService** | `pead_screening_service.py` | PEAD detection & stock filtering | `screen_for_pead()`, `filter_by_earnings_quality()`, `calculate_sue()` |
+| **PEADScreeningManager** | `pead_screening_manager.py` | Orchestrates PEAD pipeline | `process_stock_upload()`, `get_screening_results()` |
+| **SUECalculationService** | `sue_calculation_service.py` | Standardized Unexpected Earnings | `calculate_sue()`, `get_analyst_estimates()` |
 
 ### Service Design Principles
 
@@ -314,6 +326,81 @@ POSITION_TO_ROLES = {
 - Quality score badge with flash animation on swap
 - Verdict-colored badges (green=ELITE, blue=GOOD, yellow=AVERAGE, red=POOR)
 
+### Earnings Quality Service
+
+**Purpose:** Calculate sector-aware earnings quality metrics for Post-Earnings Announcement Drift (PEAD) screening.
+
+**Key Innovation:** Different quality metrics for different sectors:
+- **Industrial/Retail:** Operating Accruals (Sloan 1996) + Cash Flow Quality
+- **Financials:** ROA Persistence + Cash Flow Quality
+- **Utilities:** Industrial methodology (MVP uses industrial method)
+
+**Quality Score Scale:** 0-100 (higher = better quality earnings)
+
+**Sector Detection:**
+```python
+FINANCIAL_SECTORS = {'Financials', 'Banks', 'Insurance', 'Financial Services'}
+UTILITY_SECTORS = {'Utilities', 'Energy'}
+# Default: Industrial methodology
+```
+
+**Industrial Methodology (60% Accruals + 40% Cash Flow):**
+
+1. **Accruals Ratio** (60% weight) - Based on Sloan (1996)
+   - Operating Accruals (preferred): ΔAR + ΔInv - ΔAP - Depreciation
+   - Fallback: Total Accruals = Net Income - Operating Cash Flow
+   - Formula: `Accruals Score = 100 - |Accruals Ratio| × Multiplier`
+   - Lower accruals = higher quality earnings
+
+2. **Cash Flow to Assets** (40% weight)
+   - Formula: `Operating Cash Flow / Total Assets`
+   - Typical range: -0.2 to 0.3
+   - Normalized to 0-100 scale
+
+3. **Composite Score:**
+   - `Quality = 60% × Accruals Score + 40% × CF Score`
+
+**Financial Institution Methodology (50% ROA Persistence + 30% Cash Flow + 20% Leverage):**
+
+1. **ROA Persistence** (50% weight)
+   - Measures earnings stability across periods
+   - Formula: `Persistence Score = 100 × (1 - StdDev / 0.02)`
+   - Lower ROA volatility = higher earnings quality
+   - Typical bank ROA StdDev: 0.005 - 0.02
+
+2. **Cash Flow Quality** (30% weight)
+   - Same as industrial: Operating CF / Total Assets
+
+3. **Leverage Stability** (20% weight)
+   - MVP Placeholder: Not implemented in current version
+   - Future enhancement: Volatility in Total Debt / Total Assets
+
+**Key Methods:**
+- `calculate_quality_score_for_stock()` - Main entry point, routes to sector-specific calculation
+- `calculate_accruals_ratio()` - Computes Sloan accruals or total accruals
+- `calculate_cash_flow_to_assets()` - CF/Assets ratio
+- `_calculate_roa_persistence()` - ROA stability for financial sectors
+
+**Data Flow:**
+```
+1. User uploads earnings data (Stock + EarningsReport)
+   ↓
+2. EarningsQualityService detects sector
+   ↓
+3. Routes to sector-specific calculation:
+   - Industrial → Operating Accruals + Cash Flow
+   - Financial → ROA Persistence + Cash Flow + Leverage
+   - Utilities → Industrial method (MVP)
+   ↓
+4. Returns (quality_score: 0-100, methodology: 'INDUSTRIAL_OPERATING' | 'FINANCIAL_COMPOSITE')
+   ↓
+5. PEADScreeningService uses quality score for filtering
+```
+
+**Key Models:**
+- `Stock` - Company metadata (sector, ticker, etc.)
+- `EarningsReport` - Financial metrics (NI, OCF, assets, accruals components)
+
 ---
 
 ## Models & Data Flow
@@ -359,6 +446,9 @@ class Player:
 | `PlayerAssignment` | Player assigned to a position/role in Best XI | `models/squad_audit.py` |
 | `FormationXI` | Best XI selection with bench and quality score | `models/squad_audit.py` |
 | `BenchGap` | Missing mandatory bench position (recruitment warning) | `models/squad_audit.py` |
+| `Stock` | Company metadata for financial screening | `models/financial.py` |
+| `EarningsReport` | Earnings data for quality/PEAD analysis | `models/financial.py` |
+| `PEADScreenerResult` | PEAD screening results for a stock | `models/financial.py` |
 
 ### Validation Schemas (`/schemas/`)
 
